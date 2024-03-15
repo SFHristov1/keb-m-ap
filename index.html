@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Barcelona: Interactive kebab map</title>
+    <title>Demo: Add points to a web map</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.js"></script>
     <link
@@ -37,7 +36,7 @@
 
       map.on('click', (event) => {
         const features = map.queryRenderedFeatures(event.point, {
-          layers: ['kebab-places-am1dgf'] 
+          layers: ['kebab-places-3-6gintv'] 
         });
         if (!features.length) {
           return;
@@ -46,26 +45,45 @@
       
         // Ensure the link starts with 'http://' or 'https://'
         const link = feature.properties.link && feature.properties.link.includes('http') 
-        ? feature.properties.link 
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(feature.properties.title)}`;
+          ? feature.properties.link 
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(feature.properties.title)}`;
+      
+        // First, remove the 'Link' part from the description
+        const descriptionWithoutLink = feature.properties.description.replace(/, Link:.*/, '');
 
-        // Extract the non-link part of the description
-        const descriptionText = feature.properties.description
-        .replace(/, Link:.*/, ''); // Removes the link part from the description
+        // Split the description into parts using comma as a separator
+        const descriptionParts = descriptionWithoutLink.split(',');
 
-        // Format the description with HTML for line breaks and strong tags
-        const descriptionHTML = descriptionText
-        .replace('Ranking:', '<br><strong>Ranking:</strong>')
-        .replace('Last Year\'s Average Rating:', '<br><strong>Last Year\'s Average Rating:</strong>')
-        .replace('Last Year\'s Review Count:', '<br><strong>Last Year\'s Review Count:</strong>');
+        // Rebuild the description excluding the 'Top 3 emotions' and 'Link'
+        // Assuming that the first 3 parts are 'Ranking', 'Last Year's Average Rating', and 'Last Year's Review Count'
+        const descriptionText = descriptionParts.slice(0, 3).join('<br>');
 
+        const averageRatingRegex = /Last Year's Average Rating: (\d+\.\d+)/;
+        const averageRatingMatch = descriptionWithoutLink.match(averageRatingRegex);
+        let roundedAverageRating = averageRatingMatch ? parseFloat(averageRatingMatch[1]).toFixed(2) : 'N/A';
+
+
+        // Format the description with HTML
+        const descriptionHTML = descriptionText.replace('Ranking:', '<strong>Ranking:</strong>')
+          .replace(averageRatingRegex, `<strong>Last Year's Average Rating:</strong> ${roundedAverageRating}`)
+          .replace('Last Year\'s Review Count:', '<strong>Last Year\'s Review Count:</strong>');
+
+        // Adjust the regular expression for extracting the Top 3 emotions
+        // The regex now stops at ', Link:'
+        const emotionsRegex = /Top 3 emotions: (.*?)(, Link:|$)/;
+        const emotionsMatch = descriptionWithoutLink.match(emotionsRegex);
+        const topEmotions = emotionsMatch ? emotionsMatch[1] : 'Emotions data not available';
+
+
+
+
+      
         // Now create the hyperlink separately
         const hyperlinkText = 'View on Google Maps'; // Text to be displayed as the hyperlink
         const hyperlink = `<a href="${link}" target="_blank" style="color: #007cbf;">${hyperlinkText}</a>`;
-
-        // Combine the formatted description and hyperlink to set as popup content
-        const popupContent = `<h3>${feature.properties.title}</h3><p>${descriptionHTML}</p>${hyperlink}`;
-
+      
+        // Combine the formatted description, Top 3 emotions, and hyperlink to set as popup content
+        const popupContent = `<h3>${feature.properties.title}</h3><p>${descriptionHTML}</p><p><strong>Top 3 emotions:</strong> ${topEmotions}</p>${hyperlink}`;
       
         // Create and attach the popup to the map
         const popup = new mapboxgl.Popup({ offset: [0, -15] })
@@ -73,6 +91,7 @@
           .setHTML(popupContent)
           .addTo(map);
       });
+      
       
     </script>
   </body>
